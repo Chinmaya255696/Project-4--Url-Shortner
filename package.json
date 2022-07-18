@@ -1,0 +1,27 @@
+{
+  "name": "project-4-url-shortner",
+  "version": "1.0.0",
+  "description": "## Scalable URL Shortner Project Requirement",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ankita220296/Project-4-Url-Shortner.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Ankita220296/Project-4-Url-Shortner/issues"
+  },
+  "homepage": "https://github.com/Ankita220296/Project-4-Url-Shortner#readme",
+  "dependencies": {
+    "axios": "^0.27.2",
+    "express": "^4.18.1",
+    "mongoose": "^6.4.4",
+    "nodemon": "^2.0.19",
+    "shortid": "^2.2.16",
+    "valid-url": "^1.0.9"
+  }
+}
