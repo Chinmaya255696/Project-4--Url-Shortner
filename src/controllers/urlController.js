@@ -3,37 +3,37 @@ const shortid = require("shortid");
 const axios = require("axios");
 
 // Validataion for empty request body
-const isValidObject = function (value) {
+const checkBodyParams = function (value) {
   if (Object.keys(value).length === 0) return false;
   else return true;
 };
 
 // Validation for Strings/ Empty strings
-const hasEmptyString = function (value) {
+const isEmpty = function (value) {
   if (typeof value !== "string") return false;
   else if (value.trim().length == 0) return false;
   else return true;
 };
 const createShortUrl = async function (req, res) {
   try {
-    let urlCode = shortid.generate();
-    const baseUrl = "http://localhost:3000/";
-    const shortUrl = baseUrl.concat(urlCode);
     let data = req.body;
-    let longUrl = data.longUrl;
-    data.urlCode = urlCode;
-    data.shortUrl = shortUrl;
-
-    if (!isValidObject(data)) {
+    if (!checkBodyParams(data)) {
       return res
         .status(400)
         .send({ status: false, message: "Missing Parameters" });
     }
+    let longUrl = data.longUrl;
+    let urlCode = shortid.generate();
+    const baseUrl = "http://localhost:3000/";
+    const shortUrl = baseUrl.concat(urlCode);
+    data.urlCode = urlCode;
+    data.shortUrl = shortUrl;
+
     if (!longUrl) {
       return res
         .status(400)
         .send({ status: false, message: "Long url is mandatory" });
-    } else if (!hasEmptyString(longUrl)) {
+    } else if (!isEmpty(longUrl)) {
       return res
         .status(400)
         .send({ status: false, message: "Long url is in wrong format" });
@@ -51,23 +51,26 @@ const createShortUrl = async function (req, res) {
       return res.status(400).send({ status: false, message: "Wrong url" });
     }
 
-    const existUrlCode = await urlModel.findOne({ urlCode: urlCode });
-    if (existUrlCode) {
+    const isUrlExists = await urlModel.findOne({ urlCode: urlCode });
+    if (isUrlExists) {
       return res
         .status(400)
         .send({ status: false, message: `${urlCode} is already exists` });
     }
-    const existShortUrl = await urlModel.findOne({ shortUrl: shortUrl });
-    if (existShortUrl) {
+    const isShortUrlExists = await urlModel.findOne({ shortUrl: shortUrl });
+    if (isShortUrlExists) {
       return res
         .status(400)
         .send({ status: false, message: `${shortUrl} is already exists` });
     }
-    const existLongUrl = await urlModel.findOne({ longUrl: longUrl });
-    if (existLongUrl) {
+    const isLongUrlExists = await urlModel
+      .findOne({ longUrl: longUrl })
+      .select({ urlCode: 1, longUrl: 1, shortUrl: 1, _id: 0 });
+    if (isLongUrlExists) {
       return res.status(400).send({
         status: false,
-        message: `${longUrl} is already exists so we can't generate urlcode with same url`,
+        message: "Short url is already generated",
+        data: isLongUrlExists,
       });
     }
     await urlModel.create(data);
@@ -85,12 +88,7 @@ const createShortUrl = async function (req, res) {
 const getUrl = async function (req, res) {
   try {
     let urlCode = req.params.urlCode;
-    // if (!shortid.isValid(urlCode)) {
-    //   return res.status(400).send({
-    //     status: false,
-    //     message: `${urlCode} is not valid`,
-    //   });
-    // }
+
     const originalUrl = await urlModel
       .findOne({ urlCode: urlCode })
       .select({ longUrl: 1, _id: 0 });
