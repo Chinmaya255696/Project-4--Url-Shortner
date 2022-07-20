@@ -85,15 +85,10 @@ const createShortUrl = async function (req, res) {
 const getUrl = async function (req, res) {
   try {
     let urlCode = req.params.urlCode;
-    // if (!shortid.isValid(urlCode)) {
-    //   return res.status(400).send({
-    //     status: false,
-    //     message: `${urlCode} is not valid`,
-    //   });
-    // }
+   
     const originalUrl = await urlModel
       .findOne({ urlCode: urlCode })
-      .select({ longUrl: 1, _id: 0 });
+      console.log(originalUrl)
 
     if (originalUrl) {
       res.redirect(originalUrl.longUrl);
