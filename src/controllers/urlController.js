@@ -71,28 +71,42 @@ const createShortUrl = async function (req, res) {
     if (!found) {
       return res.status(400).send({ status: false, message: "Wrong url" });
     }
-    let responseMessage = "Success";
+
     let cahcedProfileData = await GET_ASYNC(`${req.body.longUrl}`);
 
     if (cahcedProfileData) {
       data = JSON.parse(cahcedProfileData);
-      responseMessage = "Short url already generated";
+      return res
+        .status(200)
+        .send({
+          status: true,
+          message: "Short url already generated",
+          data: data,
+        });
     } else {
       const urlCode = shortid.generate();
       const shortUrl = baseUrl.concat(urlCode);
       data.urlCode = urlCode;
       data.shortUrl = shortUrl;
+
+      
       const existLongUrl = await urlModel.findOne({ longUrl });
       if (!existLongUrl) {
         await urlModel.create(data);
       } else {
-        responseMessage = "Short url already generated";
+        return res
+          .status(200)
+          .send({
+            status: true,
+            message: "Short url already generated",
+            data: data,
+          });
       }
       await SET_ASYNC(`${req.body.longUrl}`, JSON.stringify({ data }));
     }
     return res
       .status(201)
-      .send({ status: true, message: responseMessage, data: data });
+      .send({ status: true, message: "Sucess", data: data });
   } catch (error) {
     return res.status(500).send({ status: false, message: error.message });
   }
