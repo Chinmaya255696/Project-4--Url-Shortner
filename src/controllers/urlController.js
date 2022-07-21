@@ -103,20 +103,13 @@ const getUrl = async function (req, res) {
         message: "Invalid url code",
       });
     }
-<<<<<<< HEAD
-    const originalUrl = await urlModel
-      .findOne({ urlCode: urlCode })
-      console.log(originalUrl)
-=======
     let cahcedProfileData = await GET_ASYNC(`${req.params.urlCode}`);
->>>>>>> 9f6a15682984146257db7c8d2a21417ef28984ce
 
     if (cahcedProfileData) {
       return res.send(cahcedProfileData);
     } else {
       let originalUrl = await urlModel
-        .findOne({ urlCode: urlCode })
-        .select({ longUrl: 1, _id: 0 });
+        .findOne({ urlCode: urlCode }).select({ longUrl: 1, _id: 0 });
       if (originalUrl) {
         res.redirect(originalUrl.longUrl);
         await SET_ASYNC(`${req.params.urlCode}`, JSON.stringify(originalUrl));
