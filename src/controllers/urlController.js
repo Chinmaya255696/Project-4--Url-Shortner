@@ -61,31 +61,52 @@ const createShortUrl = async function (req, res) {
     }
 
     let found = false; // Using axios to check for correct longurl
-    const axiosResponse = await axios.get(longUrl);
-    if (axiosResponse.status == 200 || axiosResponse.status == 201)
-      found = true;
+    await axios
+      .get(longUrl)
+      .then((response) => {
+        if (response.status == 200 || response.status == 201) found = true;
+      })
+      .catch((err) => {});
 
     if (!found) {
       return res.status(400).send({ status: false, message: "Wrong url" });
     }
 
-    let responseMessage = "Success";
     let cahcedProfileData = await GET_ASYNC(`${req.body.longUrl}`);
+
     if (cahcedProfileData) {
-      cahcedProfileData = JSON.parse(cahcedProfileData);
-      data.urlCode = cahcedProfileData.urlCode;
-      data.shortUrl = cahcedProfileData.shortUrl;
-      responseMessage = "Short url already generated";
+      data = JSON.parse(cahcedProfileData);
+      return res
+        .status(200)
+        .send({
+          status: true,
+          message: "Short url already generated",
+          data: data,
+        });
     } else {
       const urlCode = shortid.generate();
       const shortUrl = baseUrl.concat(urlCode);
       data.urlCode = urlCode;
       data.shortUrl = shortUrl;
-      await urlModel.create(data);
-      await SET_ASYNC(`${req.body.longUrl}`, JSON.stringify(data));
-    }
 
-    return res.send({ status: true, message: responseMessage, data: data });
+      
+      const existLongUrl = await urlModel.findOne({ longUrl });
+      if (!existLongUrl) {
+        await urlModel.create(data);
+      } else {
+        return res
+          .status(200)
+          .send({
+            status: true,
+            message: "Short url already generated",
+            data: data,
+          });
+      }
+      await SET_ASYNC(`${req.body.longUrl}`, JSON.stringify({ data }));
+    }
+    return res
+      .status(201)
+      .send({ status: true, message: "Sucess", data: data });
   } catch (error) {
     return res.status(500).send({ status: false, message: error.message });
   }
@@ -106,14 +127,13 @@ const getUrl = async function (req, res) {
     let cahcedProfileData = await GET_ASYNC(`${req.params.urlCode}`);
 
     if (cahcedProfileData) {
-      return res.send(cahcedProfileData);
+      return res.redirect(JSON.parse(cahcedProfileData).longUrl);
     } else {
       let originalUrl = await urlModel
         .findOne({ urlCode: urlCode }).select({ longUrl: 1, _id: 0 });
       if (originalUrl) {
-        res.redirect(originalUrl.longUrl);
         await SET_ASYNC(`${req.params.urlCode}`, JSON.stringify(originalUrl));
-        return res.send({ data: originalUrl });
+        return res.redirect(originalUrl.longUrl);
       } else {
         return res.status(400).send({
           status: false,
