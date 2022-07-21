@@ -61,7 +61,6 @@ const createShortUrl = async function (req, res) {
     }
 
     let found = false; // Using axios to check for correct longurl
-
     await axios
       .get(longUrl)
       .then((response) => {
@@ -72,9 +71,9 @@ const createShortUrl = async function (req, res) {
     if (!found) {
       return res.status(400).send({ status: false, message: "Wrong url" });
     }
-
     let responseMessage = "Success";
     let cahcedProfileData = await GET_ASYNC(`${req.body.longUrl}`);
+
     if (cahcedProfileData) {
       data = JSON.parse(cahcedProfileData);
       responseMessage = "Short url already generated";
@@ -83,7 +82,12 @@ const createShortUrl = async function (req, res) {
       const shortUrl = baseUrl.concat(urlCode);
       data.urlCode = urlCode;
       data.shortUrl = shortUrl;
-      await urlModel.create(data);
+      const existLongUrl = await urlModel.findOne({ longUrl });
+      if (!existLongUrl) {
+        await urlModel.create(data);
+      } else {
+        responseMessage = "Short url already generated";
+      }
       await SET_ASYNC(`${req.body.longUrl}`, JSON.stringify({ data }));
     }
     return res
