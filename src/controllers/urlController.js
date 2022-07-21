@@ -61,9 +61,13 @@ const createShortUrl = async function (req, res) {
     }
 
     let found = false; // Using axios to check for correct longurl
-    const axiosResponse = await axios.get(longUrl);
-    if (axiosResponse.status == 200 || axiosResponse.status == 201)
-      found = true;
+
+    await axios
+      .get(longUrl)
+      .then((response) => {
+        if (response.status == 200 || response.status == 201) found = true;
+      })
+      .catch((err) => {});
 
     if (!found) {
       return res.status(400).send({ status: false, message: "Wrong url" });
@@ -72,9 +76,7 @@ const createShortUrl = async function (req, res) {
     let responseMessage = "Success";
     let cahcedProfileData = await GET_ASYNC(`${req.body.longUrl}`);
     if (cahcedProfileData) {
-      cahcedProfileData = JSON.parse(cahcedProfileData);
-      data.urlCode = cahcedProfileData.urlCode;
-      data.shortUrl = cahcedProfileData.shortUrl;
+      data = JSON.parse(cahcedProfileData);
       responseMessage = "Short url already generated";
     } else {
       const urlCode = shortid.generate();
@@ -82,10 +84,11 @@ const createShortUrl = async function (req, res) {
       data.urlCode = urlCode;
       data.shortUrl = shortUrl;
       await urlModel.create(data);
-      await SET_ASYNC(`${req.body.longUrl}`, JSON.stringify(data));
+      await SET_ASYNC(`${req.body.longUrl}`, JSON.stringify({ data }));
     }
-
-    return res.send({ status: true, message: responseMessage, data: data });
+    return res
+      .status(201)
+      .send({ status: true, message: responseMessage, data: data });
   } catch (error) {
     return res.status(500).send({ status: false, message: error.message });
   }
@@ -106,15 +109,14 @@ const getUrl = async function (req, res) {
     let cahcedProfileData = await GET_ASYNC(`${req.params.urlCode}`);
 
     if (cahcedProfileData) {
-      return res.send(cahcedProfileData);
+      return res.redirect(JSON.parse(cahcedProfileData).longUrl);
     } else {
       let originalUrl = await urlModel
         .findOne({ urlCode: urlCode })
         .select({ longUrl: 1, _id: 0 });
       if (originalUrl) {
-        res.redirect(originalUrl.longUrl);
         await SET_ASYNC(`${req.params.urlCode}`, JSON.stringify(originalUrl));
-        return res.send({ data: originalUrl });
+        return res.redirect(originalUrl.longUrl);
       } else {
         return res.status(400).send({
           status: false,
