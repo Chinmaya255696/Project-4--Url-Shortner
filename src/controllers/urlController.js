@@ -1,6 +1,28 @@
 const urlModel = require("../models/urlModel");
 const shortid = require("shortid");
 const axios = require("axios");
+const redis = require("redis");
+
+const { promisify } = require("util");
+
+//Connect to redis
+const redisClient = redis.createClient(
+  13665,
+  "redis-13665.c212.ap-south-1-1.ec2.cloud.redislabs.com",
+  { no_ready_check: true }
+);
+redisClient.auth("Id1Km5GkgaOYSwoOFluI4oAvomkz91Iw", function (err) {
+  if (err) throw err;
+});
+
+redisClient.on("connect", async function () {
+  console.log("Connected to Redis..");
+});
+
+//Connection setup for redis
+
+const SET_ASYNC = promisify(redisClient.SET).bind(redisClient);
+const GET_ASYNC = promisify(redisClient.GET).bind(redisClient);
 
 // Validataion for empty request body
 const checkBodyParams = function (value) {
@@ -19,6 +41,7 @@ const isEmpty = function (value) {
 const createShortUrl = async function (req, res) {
   try {
     let data = req.body;
+
     if (!checkBodyParams(data)) {
       return res
         .status(400)
@@ -38,37 +61,31 @@ const createShortUrl = async function (req, res) {
     }
 
     let found = false; // Using axios to check for correct longurl
-    await axios
-      .get(longUrl)
-      .then((response) => {
-        if (response.status == 200 || response.status == 201) found = true;
-      })
-      .catch((error) => {});
+    const axiosResponse = await axios.get(longUrl);
+    if (axiosResponse.status == 200 || axiosResponse.status == 201)
+      found = true;
 
-    if (found == false) {
+    if (!found) {
       return res.status(400).send({ status: false, message: "Wrong url" });
     }
 
-    const isLongUrlExists = await urlModel
-      .findOne({ longUrl: longUrl })
-      .select({ urlCode: 1, longUrl: 1, shortUrl: 1, _id: 0 });
-
-    if (isLongUrlExists) {
-      return res.status(200).send({
-        status: true,
-        message: "Short url is already generated",
-        data: isLongUrlExists,
-      });
+    let responseMessage = "Success";
+    let cahcedProfileData = await GET_ASYNC(`${req.body.longUrl}`);
+    if (cahcedProfileData) {
+      cahcedProfileData = JSON.parse(cahcedProfileData);
+      data.urlCode = cahcedProfileData.urlCode;
+      data.shortUrl = cahcedProfileData.shortUrl;
+      responseMessage = "Short url already generated";
+    } else {
+      const urlCode = shortid.generate();
+      const shortUrl = baseUrl.concat(urlCode);
+      data.urlCode = urlCode;
+      data.shortUrl = shortUrl;
+      await urlModel.create(data);
+      await SET_ASYNC(`${req.body.longUrl}`, JSON.stringify(data));
     }
-    const urlCode = shortid.generate();
-    const shortUrl = baseUrl.concat(urlCode);
-    data.urlCode = urlCode;
-    data.shortUrl = shortUrl;
 
-    await urlModel.create(data);
-    return res
-      .status(201)
-      .send({ status: true, data: { longUrl, shortUrl, urlCode } });
+    return res.send({ status: true, message: responseMessage, data: data });
   } catch (error) {
     return res.status(500).send({ status: false, message: error.message });
   }
@@ -86,18 +103,30 @@ const getUrl = async function (req, res) {
         message: "Invalid url code",
       });
     }
+<<<<<<< HEAD
     const originalUrl = await urlModel
       .findOne({ urlCode: urlCode })
       console.log(originalUrl)
+=======
+    let cahcedProfileData = await GET_ASYNC(`${req.params.urlCode}`);
+>>>>>>> 9f6a15682984146257db7c8d2a21417ef28984ce
 
-    if (originalUrl) {
-      res.redirect(originalUrl.longUrl);
-    }
-    if (!originalUrl) {
-      return res.status(400).send({
-        status: false,
-        message: "Url not found",
-      });
+    if (cahcedProfileData) {
+      return res.send(cahcedProfileData);
+    } else {
+      let originalUrl = await urlModel
+        .findOne({ urlCode: urlCode })
+        .select({ longUrl: 1, _id: 0 });
+      if (originalUrl) {
+        res.redirect(originalUrl.longUrl);
+        await SET_ASYNC(`${req.params.urlCode}`, JSON.stringify(originalUrl));
+        return res.send({ data: originalUrl });
+      } else {
+        return res.status(400).send({
+          status: false,
+          message: "Url not found",
+        });
+      }
     }
   } catch (error) {
     return res.status(500).send({ status: false, message: error.message });
