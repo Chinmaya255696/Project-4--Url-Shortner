@@ -78,9 +78,8 @@ const createShortUrl = async function (req, res) {
 
     let responseMessage = "Success";
     let cahcedProfileData = await GET_ASYNC(`${req.body.longUrl}`);
-
     if (cahcedProfileData) {
-      data = JSON.parse(cahcedProfileData);
+      data = JSON.parse(cahcedProfileData).data;
       responseMessage = "Short url already generated from cashing";
     } else {
       const urlDetails = await urlModel.findOne({ longUrl });
@@ -95,8 +94,8 @@ const createShortUrl = async function (req, res) {
         data.shortUrl = urlDetails.shortUrl;
         responseMessage = "Short url already generated";
       }
+      await SET_ASYNC(`${req.body.longUrl}`, JSON.stringify({ data }));
     }
-    await SET_ASYNC(`${req.body.longUrl}`, JSON.stringify({ data }));
     return res.status(201).send({
       status: true,
       message: responseMessage,
