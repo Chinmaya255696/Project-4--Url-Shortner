@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const urlSchema = new mongoose.Schema(
   {
     urlCode: {
-      type: String,
+      type: String, 
       required: true,
       lowercase: true,
       unique: true,
