@@ -24,6 +24,10 @@ redisClient.on("connect", async function () {
 const SET_ASYNC = promisify(redisClient.SET).bind(redisClient);
 const GET_ASYNC = promisify(redisClient.GET).bind(redisClient);
 
+// redisClient.flushdb(function (err, succeeded) {
+//   console.log(succeeded); // will be true if successfull
+// });
+
 // Validataion for empty request body
 const checkBodyParams = function (value) {
   if (Object.keys(value).length === 0) return false;
@@ -72,41 +76,32 @@ const createShortUrl = async function (req, res) {
       return res.status(400).send({ status: false, message: "Wrong url" });
     }
 
+    let responseMessage = "Success";
     let cahcedProfileData = await GET_ASYNC(`${req.body.longUrl}`);
 
     if (cahcedProfileData) {
       data = JSON.parse(cahcedProfileData);
-      return res
-        .status(200)
-        .send({
-          status: true,
-          message: "Short url already generated",
-          data: data,
-        });
+      responseMessage = "Short url already generated from cashing";
     } else {
-      const urlCode = shortid.generate();
-      const shortUrl = baseUrl.concat(urlCode);
-      data.urlCode = urlCode;
-      data.shortUrl = shortUrl;
-
-
-      const existLongUrl = await urlModel.findOne({ longUrl });
-      if (!existLongUrl) {
+      const urlDetails = await urlModel.findOne({ longUrl });
+      if (!urlDetails) {
+        const urlCode = shortid.generate();
+        const shortUrl = baseUrl.concat(urlCode);
+        data.urlCode = urlCode;
+        data.shortUrl = shortUrl;
         await urlModel.create(data);
       } else {
-        return res
-          .status(200)
-          .send({
-            status: true,
-            message: "Short url already generated",
-            data: data,
-          });
+        data.urlCode = urlDetails.urlCode;
+        data.shortUrl = urlDetails.shortUrl;
+        responseMessage = "Short url already generated";
       }
-      await SET_ASYNC(`${req.body.longUrl}`, JSON.stringify({ data }));
     }
-    return res
-      .status(201)
-      .send({ status: true, message: "Sucess", data: data });
+    await SET_ASYNC(`${req.body.longUrl}`, JSON.stringify({ data }));
+    return res.status(201).send({
+      status: true,
+      message: responseMessage,
+      data: data,
+    });
   } catch (error) {
     return res.status(500).send({ status: false, message: error.message });
   }
