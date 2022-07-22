@@ -89,7 +89,7 @@ const createShortUrl = async function (req, res) {
       data.urlCode = urlCode;
       data.shortUrl = shortUrl;
 
-      
+
       const existLongUrl = await urlModel.findOne({ longUrl });
       if (!existLongUrl) {
         await urlModel.create(data);
@@ -136,7 +136,7 @@ const getUrl = async function (req, res) {
         await SET_ASYNC(`${req.params.urlCode}`, JSON.stringify(originalUrl));
         return res.redirect(originalUrl.longUrl);
       } else {
-        return res.status(400).send({
+        return res.status(404).send({
           status: false,
           message: "Url not found",
         });
